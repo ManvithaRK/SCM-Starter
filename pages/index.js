@@ -1,5 +1,5 @@
-import {useState, useEffect} from "react";
-import {ethers} from "ethers";
+import { useState, useEffect } from "react";
+import { ethers } from "ethers";
 import atm_abi from "../artifacts/contracts/Assessment.sol/Assessment.json";
 
 export default function HomePage() {
@@ -7,40 +7,42 @@ export default function HomePage() {
   const [account, setAccount] = useState(undefined);
   const [atm, setATM] = useState(undefined);
   const [balance, setBalance] = useState(undefined);
+  const [vipTick, setVipTick] = useState(undefined);
+  const [generalTick, setGeneralTick] = useState(undefined);
+  const [ticketNumber, setTicketNumber] = useState(''); 
 
-  const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+  const contractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
   const atmABI = atm_abi.abi;
 
-  const getWallet = async() => {
+  const getWallet = async () => {
     if (window.ethereum) {
       setEthWallet(window.ethereum);
     }
 
     if (ethWallet) {
-      const account = await ethWallet.request({method: "eth_accounts"});
-      handleAccount(account);
+      const accounts = await ethWallet.request({ method: "eth_accounts" });
+      handleAccount(accounts);
     }
-  }
+  };
 
   const handleAccount = (account) => {
-    if (account) {
-      console.log ("Account connected: ", account);
-      setAccount(account);
-    }
-    else {
+    if (account && account.length > 0) {
+      console.log("Account connected: ", account);
+      setAccount(account[0]);
+    } else {
       console.log("No account found");
     }
-  }
+  };
 
-  const connectAccount = async() => {
+  const connectAccount = async () => {
     if (!ethWallet) {
-      alert('MetaMask wallet is required to connect');
+      alert("MetaMask wallet is required to connect");
       return;
     }
-  
-    const accounts = await ethWallet.request({ method: 'eth_requestAccounts' });
+
+    const accounts = await ethWallet.request({ method: "eth_requestAccounts" });
     handleAccount(accounts);
-    
+
     // once wallet is set we can get a reference to our deployed contract
     getATMContract();
   };
@@ -49,44 +51,58 @@ export default function HomePage() {
     const provider = new ethers.providers.Web3Provider(ethWallet);
     const signer = provider.getSigner();
     const atmContract = new ethers.Contract(contractAddress, atmABI, signer);
- 
-    setATM(atmContract);
-  }
 
-  const getBalance = async() => {
+    setATM(atmContract);
+  };
+
+  const getBalance = async () => {
     if (atm) {
       setBalance((await atm.getBalance()).toNumber());
     }
-  }
+  };
 
-  const deposit = async() => {
+  const getGeneralTicketCount = async () => {
     if (atm) {
-      let tx = await atm.deposit(1);
-      await tx.wait()
-      getBalance();
+      setGeneralTick((await atm.getGeneralTicketCount()).toNumber());
     }
-  }
+  };
 
-  const withdraw = async() => {
+  const getVIPTicketCount = async () => {
     if (atm) {
-      let tx = await atm.withdraw(1);
-      await tx.wait()
-      getBalance();
+      setVipTick((await atm.getVIPTicketCount()).toNumber());
     }
-  }
+  };
+
+  const generalTicket = async () => {
+    if (atm) {
+      let tx = await atm.generalTicket(Number(ticketNumber));
+      await tx.wait();
+      getBalance();
+      getGeneralTicketCount();
+    }
+  };
+
+  const VIP = async () => {
+    if (atm) {
+      let tx = await atm.VIP(Number(ticketNumber));
+      await tx.wait();
+      getBalance();
+      getVIPTicketCount();
+    }
+  };
 
   const initUser = () => {
     // Check to see if user has Metamask
     if (!ethWallet) {
-      return <p>Please install Metamask in order to use this ATM.</p>
+      return <p>Please install Metamask in order to use this ATM.</p>;
     }
 
     // Check to see if user is connected. If not, connect to their account
     if (!account) {
-      return <button onClick={connectAccount}>Please connect your Metamask wallet</button>
+      return <button onClick={connectAccount}>Please connect your Metamask wallet</button>;
     }
 
-    if (balance == undefined) {
+    if (balance === undefined) {
       getBalance();
     }
 
@@ -94,24 +110,41 @@ export default function HomePage() {
       <div>
         <p>Your Account: {account}</p>
         <p>Your Balance: {balance}</p>
-        <button onClick={deposit}>Deposit 1 ETH</button>
-        <button onClick={withdraw}>Withdraw 1 ETH</button>
+        <input 
+          type="textbox" 
+          placeholder="Number of tickets" 
+          value={ticketNumber} 
+          onChange={(e) => setTicketNumber(e.target.value)} 
+        />
+        <button onClick={generalTicket}>General Ticket</button>
+        <button onClick={VIP}>VIP</button>
+        <p>General Tickets Purchased:{generalTick}</p>
+        <p>VIP Tickets Purchased:{vipTick}</p>
       </div>
-    )
-  }
+    );
+  };
 
-  useEffect(() => {getWallet();}, []);
+  useEffect(() => {
+    getWallet();
+  }, []);
 
   return (
     <main className="container">
-      <header><h1>Welcome to the Metacrafters ATM!</h1></header>
+      <header><h1>Taylor Swift Concert Tickets</h1>
+      <p>General Ticket Cost:<u> $250</u></p>
+      <p>VIP Ticket Cost:<u> $500</u> </p>
+      </header>
       {initUser()}
       <style jsx>{`
         .container {
-          text-align: center
+          text-align: center;
+          border:5px solid black;
         }
-      `}
-      </style>
+        p {  
+          margin: 0 auto;
+        }
+        
+      `}</style>
     </main>
-  )
+  );
 }
